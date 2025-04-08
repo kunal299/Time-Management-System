@@ -1,0 +1,573 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engagements Grid Example</title>
+
+    <style>
+        #engagementsGrid {
+            height: 400px;
+            width: 98%;
+            margin: 20px 0;
+            color: #fcf792; 
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            margin-right: 27px;
+        }
+
+        .ui.fullscreen.modal {
+            background-color: white;
+        }
+
+        .ui.card {
+            width: 100%;
+            padding: 20px;
+            margin-top: 20px;
+            margin-bottom: 0;
+        }
+
+        .task-list {
+            max-height: 150px;
+            overflow-y: scroll;
+            margin-top: 10px;
+        }
+
+        .ui.modal {
+            display: none;
+        }
+
+        .inline-fields {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+            .inline-fields .field {
+                flex: 1;
+                margin-right: 15px;
+            }
+
+                .inline-fields .field:last-child {
+                    margin-right: 0;
+                }
+
+        .ui.form .field {
+            margin-bottom: 15px;
+        }
+
+        #task-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .task-item {
+            flex: 1 1 calc(25% - 15px);
+            display: flex;
+            align-items: center;
+        }
+
+        #task-search, #custom-task-name {
+            width: 200px;
+        }
+
+        .task-search-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .ui.form .field > label {
+            font-size: 1.1rem;
+        }
+
+        .text {
+            font-size: 1rem;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>List of Engagements</h1>
+        <button class="ui green button" onclick="engagements.addNew()"><i class="add icon"></i>New Engagement</button>
+    </div>
+
+    <!-- Grid Container -->
+    <div id="engagementsGrid" class="ag-theme-alpine"></div>
+
+    <!-- Fullscreen Flyout Modal -->
+    <div id="engagementModal" class="ui fullscreen modal">
+        <i id="close-icon" class="close icon"></i>
+        <div class="header">Add New Engagement</div>
+        <div class="content">
+            <form class="ui form">
+                <!-- Title, Start Date, End Date -->
+                <div class="inline-fields">
+                    <div class="field">
+                        <label>Project</label>
+                        <input id="title" type="text" name="title" placeholder="Engagement Title" required>
+                    </div>
+                    <div class="field">
+                        <label>Start Date</label>
+                        <input type="date" name="start-date" id="start-date-input" required>
+                    </div>
+                    <div class="field">
+                        <label>End Date</label>
+                        <input type="date" name="end-date" id="end-date-input" required>
+                    </div>
+                </div>
+
+                <!-- Project Description -->
+                <div class="field">
+                    <label>Project Description</label>
+                    <textarea id="project-description" name="description" rows="3" placeholder="Enter project description" required></textarea>
+                </div>
+
+                <!-- Project Owners -->
+                <div class="field">
+                    <label>Project Owners</label>
+                    <select id="project-owners" class="ui dropdown" multiple>
+                        <option value="" disabled selected>Select project owners</option>
+                    </select>
+                </div>
+
+                <!-- Team Members -->
+                <div class="field">
+                    <label>Team Members</label>
+                    <select name="team-members" id="team-members" onchange="engagements.updateTeamMembersTbl()" class="ui dropdown" multiple>
+                        <option value="" disabled selected>Select team members</option>
+                    </select>
+                </div>
+
+                <!-- Team Members Table -->
+                <div class="field">
+                    <table id="team-table" class="ui celled table">
+                        <thead>
+                            <tr>
+                                <th>Team Member</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="team-table-body"></tbody>
+                    </table>
+                </div>
+
+                <!-- Tasks -->
+                <div class="ui card">
+                    <div class="field task-search-container">
+                        <div class="ui category search">
+                            <div class="ui icon input">
+                                <input id="task-search" class="task-search" type="text" placeholder="Search for tasks...">
+                                <i class="search icon"></i>
+                            </div>
+                            <div class="results"></div>
+                        </div>
+                        <div>
+                            <input type="text" id="custom-task-name" placeholder="Enter task">
+                            <button type="button" onclick="engagements.addCustomTask()" id="add-custom-task" class="ui green plus button"><i class="plus circle icon"></i>Add Task</button>
+                        </div>
+                    </div>
+                    <div class="field task-list" id="task-list"></div>
+                </div>
+            </form>
+        </div>
+        <div class="basic actions">
+            <div class="ui red button" onclick="engagements.clearForm()">Cancel</div>
+            <div class="ui blue button" onclick="engagements.save()"><i class="save icon"></i>Save</div>
+        </div>
+    </div>
+    <script>
+        const engagements = {};
+        engagements.data = [];
+        engagements.projectOwners = [];
+        engagements.teamMembers = [];
+        engagements.tasks = [];
+
+        // Object initialized for engagement data submission
+        engagements.objPost = {
+            "EngagementID": 0,
+            "Title": "",
+            "StartDate": "",
+            "EndDate": "",
+            "EngagementCategoryID": 1,
+            "Description": "",
+            "TeamMembers": [],
+            "Tasks": [],
+            "Owners": []
+        };
+
+        // Binding the form for post
+        engagements.bindForm = function () {
+            engagements.objPost.Title = $("#title").val();
+            engagements.objPost.StartDate = $("#start-date-input").val();
+            engagements.objPost.EndDate = $("#end-date-input").val();
+            engagements.objPost.Description = $("#project-description").val();
+
+            engagements.objPost.Owners = $("#project-owners").dropdown('get value').map(function (userId) {
+                const owner = engagements.objPost.Owners.find(o => o.userID === parseInt(userId));
+                return { userID: parseInt(userId) };
+            });
+
+            engagements.objPost.TeamMembers = $("#team-table-body tr").map(function () {
+                const userId = $(this).attr('data-user-id');
+                return {
+                    UserID: parseInt(userId),
+                    StartDate: $(this).find('input[name="start-date"]').val(),
+                    EndDate: $(this).find('input[name="end-date"]').val()
+                };
+            }).get();
+
+            engagements.objPost.Tasks = $("#task-list input[type='checkbox']:checked").map(function () {
+                return { TaskID: parseInt($(this).val()) };
+            }).get();
+        };
+
+        // Save or update an engagement
+        engagements.save = function () {
+            engagements.bindForm();
+            var url = window.location.origin + "/api/Engagement/Save";
+            $.ajax({
+                url: url,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(engagements.objPost),
+                success: function (result) {
+                    if (engagements.objPost.engagementID == 0) {
+                        helper.SuccessToast("Data Saved Successfully!");
+                    } else {
+                        helper.SuccessToast("Data Updated Successfully!");
+                    }
+                    engagements.get();
+                    $('#engagementModal').modal('hide');
+                }
+            });
+        };
+
+        // Getting an engagement to populate the grid
+        engagements.get = function () {
+            var url = window.location.origin + "/api/Engagement/owner";
+            $.ajax({
+                url: url,
+                success: function (result) {
+                    engagements.data = result;
+                    engagements.loadgrid();
+                }
+            });
+        };
+
+        // Configure and load data into the grid 
+        engagements.loadgrid = function () {
+            if (!_.isEmpty(engagements.objGrid)) engagements.objGrid.destroy();
+
+            const gridOptions = {
+                rowData: engagements.data,
+                defaultColDef: {
+                    filter: true,
+                    sortable: true,
+                    resizable: true,
+                },
+                pagination: true,
+                paginationPageSize: 10,
+                columnDefs: [
+                    { headerName: "#", valueGetter: "node.rowIndex + 1", width: 60 },
+                    { field: "title", headerName: "Project", width: 250 },
+                    {
+                        field: "Owners",
+                        headerName: "Owner",
+                        valueGetter: params => params.data.owners ? params.data.owners.map(o => o.ownerName).join(", ") : "",
+                        width: 200
+                    },
+                    { field: "startDate", headerName: "Start Date", valueFormatter: engagements.formatDate, width: 110 },
+                    { field: "endDate", headerName: "End Date", valueFormatter: engagements.formatDate, width: 110 },
+                    {
+                        field: "TeamMembers",
+                        headerName: "Team Members",
+                        valueGetter: params => params.data.teamMembers ? params.data.teamMembers.map(m => m.teamMemberName).join(", ") : "",
+                        width: 275
+                    },
+                    { field: "engagementID", headerName: "Action", cellRenderer: engagements.renderEditButton, pinned: 'right', width: 130 }
+                ],
+            };
+
+            const gridDiv = document.querySelector("#engagementsGrid");
+            engagements.objGrid = new agGrid.Grid(gridDiv, gridOptions);
+        };
+
+        // Format date values 
+        engagements.formatDate = function (params) {
+            if (!params.value) return '';
+            const date = new Date(params.value);
+            return date.toLocaleDateString();
+        };
+
+        // Render edit button in grid
+        engagements.renderEditButton = function (params) {
+            return `<button class="ui inverted violet button" onclick="engagements.edit(${params.value})"><i class="edit icon"></i>Edit</button>`;
+        };
+
+        // Edit function with existing data
+        engagements.edit = function (id) {
+            engagements.objPost.EngagementID = id;
+            $('#header').text('Edit Engagement');
+            var thisitem = _.first(_.where(engagements.data, { engagementID: id }));
+            if (!thisitem) {
+                console.error("Item with id", id, "not found.");
+                return;
+            }
+
+            Promise.all([
+                engagements.getProjectOwners(),
+                engagements.getTeamMembers('@UCITMS.UserSession.GetUserId(Context)'),
+                engagements.getTasks()
+            ]).then(() => {
+                engagements.populateForm(thisitem);
+                $('#engagementModal').modal('show');
+            }).catch(error => {
+                console.error("Error loading data for edit:", error);
+            });
+        };
+
+        // Populate form fields
+        engagements.populateForm = function (data) {
+            $('#title').val(data.title);
+            const formattedStartDate = data.startDate.split('T')[0];
+            const formattedEndDate = data.endDate.split('T')[0];
+
+            $('#start-date-input').val(formattedStartDate);
+            $('#end-date-input').val(formattedEndDate);
+            $('#project-description').val(data.description);
+
+            $("#project-owners").dropdown('clear');
+            $("#team-members").dropdown('clear');
+
+            const selectedOwnerIDs = data.owners.map(o => o.userID);
+            const selectedMemberIDs = data.teamMembers.map(m => m.userID);
+
+            $('#project-owners').empty();
+            engagements.projectOwners.forEach(owner => {
+                const isSelected = selectedOwnerIDs.includes(owner.userID) ? 'selected' : '';
+                $('#project-owners').append(new Option(owner.username, owner.userID, false, isSelected));
+            });
+            $('#project-owners').dropdown('refresh');
+
+            $('#team-members').empty();
+            engagements.teamMembers.forEach(member => {
+                const isSelected = selectedMemberIDs.includes(member.userID) ? 'selected' : '';
+                $('#team-members').append(new Option(member.username, member.userID, false, isSelected));
+            });
+            $('#team-members').dropdown('refresh');
+
+            $('#team-table-body').empty();
+            data.teamMembers.forEach(member => {
+                $('#team-table-body').append(`
+                    <tr data-user-id="${member.userID}">
+                        <td>${member.teamMemberName}</td>
+                        <td><input type="date" name="start-date" value="${formattedStartDate}" /></td>
+                        <td><input type="date" name="end-date" value="${formattedEndDate}" /></td>
+                    </tr>
+                `);
+            });
+
+            $('#task-list').empty();
+            const selectedTaskIDs = data.tasks.map(task => task.taskID);
+            engagements.tasks.forEach(task => {
+                const isChecked = selectedTaskIDs.includes(task.taskID) ? 'checked' : '';
+                $('#task-list').append(`
+                    <div class="task-item">
+                        <div class="ui checkbox">
+                            <input type="checkbox" name="task" value="${task.taskID}" ${isChecked}>
+                            <label>${task.taskName}</label>
+                        </div>
+                    </div>
+                `);
+            });
+
+            $('#task-list .ui.checkbox').checkbox();
+        };
+
+        // Clear and reset form inputs
+        engagements.clearForm = function () {
+            $('form').find('input, textarea').val('');
+            $('form').find('select').dropdown('clear');
+            $('#team-table-body').empty();
+            $('#task-list').empty();
+        };
+
+        // Adds a new engagement
+        engagements.addNew = function () {
+            $('#header').text('Add New Engagement');
+            $('#engagementModal').modal('show');
+            engagements.clearForm(); 
+
+            engagements.getProjectOwners();
+            engagements.getTasks();
+            var userId = '@UCITMS.UserSession.GetUserId(Context)';
+            engagements.getTeamMembers(userId);
+        };
+
+
+        // Add a new custom task
+        engagements.addCustomTask = function () {
+            const taskName = $('#custom-task-name').val().trim();
+            if (!taskName) {
+                alert("Please enter a task name.");
+                return;
+            }
+
+            const task = {
+                TaskName: taskName,
+                TaskDescription: '',
+                IsDeleted: false,
+                IsGeneric: true
+            };
+
+            $.ajax({
+                url: `${window.location.origin}/api/Engagement/tasks`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(task),
+                success: function (response) {
+                    const newTaskID = response.TaskID;
+                    if (newTaskID) {
+                        engagements.getTasks().then(() => {
+                            $('#task-list').empty();
+                            engagements.tasks.forEach(task => {
+                                const isChecked = task.taskID === newTaskID ? 'checked' : '';
+                                $('#task-list').append(`
+                                    <div class="task-item">
+                                        <div class="ui checkbox">
+                                            <input type="checkbox" name="task" value="${task.taskID}" ${isChecked}>
+                                            <label>${task.taskName}</label>
+                                        </div>
+                                    </div>
+                                `);
+                            });
+
+                            $('#task-list .ui.checkbox').checkbox();
+                            $('#custom-task-name').val('');
+                        });
+                    }
+                }
+            });
+        };
+
+        // Update the table of team members
+        engagements.updateTeamMembersTbl = function () {
+            const selectedMembers = $('#team-members').val();
+            const startDate = $('#start-date-input').val();
+            const endDate = $('#end-date-input').val();
+
+            engagements.objPost.TeamMembers = [];
+
+            selectedMembers.forEach(memberId => {
+                if ($('#team-table-body').find(`[data-user-id="${memberId}"]`).length === 0) {
+                    const member = engagements.teamMembers.find(m => m.userID == memberId);
+
+                    if (member) {
+                        $('#team-table-body').append(`
+                            <tr data-user-id="${member.userID}">
+                                <td>${member.username}</td>
+                                <td><input type="date" name="start-date" value="${startDate}" /></td>
+                                <td><input type="date" name="end-date" value="${endDate}" /></td>
+                            </tr>
+                        `);
+                    }
+                }
+
+                engagements.objPost.TeamMembers.push({
+                    UserID: parseInt(memberId),
+                    StartDate: startDate,
+                    EndDate: endDate
+                });
+            });
+
+            $('#team-table-body tr').each(function () {
+                const memberId = $(this).attr('data-user-id');
+                if (!selectedMembers.includes(memberId)) {
+                    $(this).remove();
+                }
+            });
+        };
+
+        // Retrieve project owners
+        engagements.getProjectOwners = function () {
+            var url = window.location.origin + "/api/User/GetAllUsers";
+            return $.ajax({
+                url: url,
+                method: 'GET',
+                success: function (result) {
+                    engagements.projectOwners = result;
+                    var str = '';
+
+                    engagements.projectOwners.forEach(owner => {
+                        str += `<option value="${owner.userID}">${owner.username}</option>`;
+                    });
+
+                    $("#project-owners").html(str);
+                    $('#project-owners').dropdown();
+                }
+            });
+        };
+
+        // Retrieve team members
+        engagements.getTeamMembers = function (managerId) {
+            var url = window.location.origin + "/api/Engagement/GetTeamMembers/" + managerId;
+            return $.ajax({
+                url: url,
+                method: 'GET',
+                success: function (result) {
+                    engagements.teamMembers = result;
+                    var str = '';
+
+                    engagements.teamMembers.forEach(member => {
+                        str += `<option value="${member.userID}">${member.username}</option>`;
+                    });
+
+                    $("#team-members").html(str);
+                    $('#team-members').dropdown();
+                }
+            });
+        };
+
+        // Retrieve tasks
+        engagements.getTasks = function () {
+            var url = window.location.origin + "/api/Engagement/tasks";
+            return $.ajax({
+                url: url,
+                method: 'GET',
+                success: function (result) {
+                    engagements.tasks = result;
+                    let str = '';
+                    engagements.tasks.forEach(task => {
+                        str += `
+                            <div class="task-item">
+                                <div class="ui checkbox">
+                                    <input type="checkbox" name="task" value="${task.taskID}">
+                                    <label>${task.taskName}</label>
+                                </div>
+                            </div>`;
+                    });
+                    $("#task-list").html(str);
+                    $('#task-list .ui.checkbox').checkbox();
+                }
+            });
+        };
+
+        $(document).ready(function () {
+            engagements.get();
+        });
+</script>   
+</body>
+</html>

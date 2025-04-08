@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HR Admin Dashboard</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 2vh 2vw;
+            padding-bottom: 15px;
+        }
+
+        .tooltip-custom { 
+            max-width: 500px !important;
+            white-space: pre-wrap;
+        }
+
+        .tooltip-no-wrap {
+            max-width: none !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>HR Dashboard</h1>
+        <div class="ui three column stackable grid container">
+            <div class="column">
+                <div class="ui red card">
+                    <div class="content">
+                        <div class="ui center aligned header">Users</div>
+                        <div class="center aligned description">
+                            <b>Without primary approver</b>
+                        </div>
+                    </div>
+                    <div class="extra content">
+                        <div class="center aligned author">
+                            <div class="ui statistic">
+                                <div class="value">
+                                    12
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui red card">
+                    <div class="content">
+                        <div class="ui center aligned header">Users</div>
+                        <div class="center aligned description">
+                            <b>Without secondary approver</b>
+                        </div>
+                    </div>
+                    <div class="extra content">
+                        <div class="center aligned author">
+                            <div class="ui statistic">
+                                <div class="value">
+                                    18
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="ui red card">
+                    <div class="content error">
+                        <div class="ui center aligned header">Pending Timesheets</div>
+                        <div class="center aligned description">
+                            @* User's who haven't submit timesheets *@
+                            <br/>
+                        </div>
+                    </div>
+                    <div class="extra content">
+                        <div class="center aligned author">
+                            <div class="ui statistic">
+                                <div class="value" style="color:red;">
+                                    43
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+            
+            
+        </div>
+        <table class="ui structured celled table" style="width:1110px;">
+            <thead>
+                <tr> 
+                    <th style="width:10%">#</th>
+                    <th style="width:35%">Name</th>
+                    <th style="width:35%">Pending Timesheets</th>
+                    <th style="width:20%">Last Updated Timesheet On</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1.</td>
+                    <td>Dhruvil</td>
+                    <td class="warning"><i class="attention icon" data-content="Last Timesheet added on: 10/11/2024" data-variation="basic"></i>2</td>
+                    <td>04/10/2024</td>
+                </tr>
+                <tr>
+                    <td>2.</td>
+                    <td>Shivam</td>
+                    <td class="error"><i class="attention icon" data-content="Last Timesheet added on: 10/11/2024" data-variation="basic"></i>5</td>
+                    <td>20/09/2024</td>
+                </tr>
+                <tr>
+                    <td>3.</td>
+                    <td>Krunal</td>
+                    <td class="warning"><i class="attention icon" data-content="Last Timesheet added on: 10/11/2024" data-variation="basic"></i>1</td>
+                    <td>11/10/2024</td>
+                </tr>
+                <tr>
+                    <td>4.</td>
+                    <td>Vrushti</td>
+                    <td class="warning"><i class="attention icon" data-content="Last Timesheet added on: 10/11/2024" data-variation="basic"></i>2</td>
+                    <td>04/10/2024</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>Total</td>
+                    <td></td>
+                    <td colspan="2" class="error"><i class="attention icon" data-content="Last Timesheet added on: 10/11/2024" data-variation="basic"></i>43</td>
+                    
+                </tr>
+            </tfoot>
+        </table>
+
+    </div>
+    <script>
+        $(document).ready(function () {
+            $('.attention.icon').popup();
+        });
+    </script>
+</body>
+</html>

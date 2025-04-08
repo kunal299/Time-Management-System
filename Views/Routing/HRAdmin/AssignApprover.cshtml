@@ -1,0 +1,308 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Approver Page</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui/dist/fomantic.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/28.2.0/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/28.2.0/styles/ag-theme-alpine.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fomantic-ui/dist/semantic.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/28.2.0/ag-grid-community.min.noStyle.js"></script>
+</head>
+<body style="font-family: Arial, sans-serif;">
+    <!-- HEADING -->
+    <div class="ui grid padded">
+        <div class="eight wide column">
+            <h1 class="ui header">Assign Approver</h1>
+        </div>
+        <div class="eight wide column right aligned">
+            <button class="ui green button large" id="assignBtn">ASSIGN</button>
+        </div>
+    </div>
+
+    <!-- GRID -->
+    <div id="myGrid" class="ag-theme-alpine" style="height: 600px; width: 98.5%;"></div>
+
+    <!-- MODAL for Assign Approver -->
+    <div class="ui mini modal" id="approverModal" style="display:none; height:fit-content;">
+        <h1 class="center aligned header huge" id="modalHeader">Assign Approver</h1>
+
+        <div class="content">
+            <div class="ui form">
+                <div class="ui large header field">
+                    <label id="userLabel">USER</label>
+
+                    <div id="userDisplay" class="ui input" style="display: none;">
+                        <span id="selectedUserName" class="ui large header" style="display: block; margin: 0 auto;"></span>
+                    </div>
+
+                    <div class="ui selection dropdown" id="ddlUser">
+                        <i class="dropdown icon"></i>
+                        <div class="default text">Select User</div>
+                        <div class="menu" id="ddlUserMenu"></div>
+                    </div>
+                </div>
+                <div class="ui large header field">
+                    <label>PRIMARY APPROVER</label>
+                    <div class="ui selection dropdown" id="ddlPrimaryApprover">
+                        <i class="dropdown icon"></i>
+                        <div class="default text centered">Select Approver</div>
+                        <div class="menu" id="ddlPrimaryApproverMenu"></div>
+                    </div>
+                </div>
+                <div class="ui large header field">
+                    <label>SECONDARY APPROVER</label>
+                    <div class="ui selection dropdown" id="ddlSecondaryApprover">
+                        <i class="dropdown icon"></i>
+                        <div class="default text centered">Select Approver</div>
+                        <div class="menu" id="ddlSecondaryApproverMenu"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="actions" style="margin-top: 10px;">
+                <button class="ui large blue button" id="savebtn" onclick="userManagerInfo.save()"><i class="ui save icon"></i> Save</button>
+                <button class="ui large red button" id="closeModal"><i class="ui cancel icon"></i>Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script>
+        // Created an empty object array
+        var userManagerInfo = {};
+
+        // Created an object insided the arry to store values for POST
+        userManagerInfo.objPost = {
+            "userId": null,
+            "primaryManagerId": null,
+            "secondaryManagerId": null,
+            "modUser": null
+        }
+
+        // Fetching data to populate grid
+        userManagerInfo.getData = async function () {
+            const response = await fetch('/api/HRAdmin/usermanagerinfo');
+            if (!response.ok) throw new Error('Network response was not ok');
+            return await response.json();
+        };
+
+        //Initialize GRID
+        userManagerInfo.initializeGrid = async function () {
+            const userData = await userManagerInfo.getData();
+            const columnDefs = [
+                {
+                    headerName: 'Employee',
+                    field: 'userName',
+                    minWidth: 350, filter: true,
+                    cellStyle: {
+                        textAlign: 'center',
+                        fontSize: '16px'
+                    }
+                },
+                {
+                    headerName: 'Primary Approver',
+                    field: 'primaryManagerName',
+                    minWidth: 265,
+                    filter: true,
+                    cellStyle: {
+                        textAlign: 'center',
+                        fontSize: '16px'
+                    },
+                    cellRenderer: (params) => {
+                        return params.value ? `<span class="user-name centered">${params.value}</span>` : '-';
+                    }
+                },
+                {
+                    headerName: 'Secondary Approver',
+                    field: 'secondaryManagerName',
+                    minWidth: 350,
+                    filter: true,
+                    cellStyle: {
+                        textAlign: 'center',
+                        fontSize: '16px'
+                    },
+                    cellRenderer: (params) => {
+                        return params.value ? `<span class="user-name">${params.value}</span>` : '-';
+                    }
+                },
+                {
+                    headerName: 'Action',
+                    cellStyle: {
+                        textAlign: 'center',
+                        fontSize: '16px'
+                    },
+                    cellRenderer: userManagerInfo.renderEditBtn,
+                    pinned: 'right',
+                    lockPinned: true,
+                    sortable: false,
+                    filter: false,
+                    width: 118
+                }
+            ];
+
+            const gridOptions = {
+                columnDefs: columnDefs,
+                rowData: userData,
+            };
+
+            const eGridDiv = document.getElementById('myGrid');
+            new agGrid.Grid(eGridDiv, gridOptions);
+        };
+        
+        // Populate Dropdowns with Users
+        userManagerInfo.populateDropdown = function (dropdownId, users) {
+            const dropdownMenu = document.getElementById(dropdownId);
+            dropdownMenu.innerHTML = '';
+
+            const noneOption = document.createElement('div');
+            noneOption.className = 'item';
+            noneOption.innerHTML = 'None';
+            noneOption.dataset.value = 'null';  
+            dropdownMenu.appendChild(noneOption);
+
+            users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.innerHTML = user.userName;
+                item.dataset.value = user.userID;
+                dropdownMenu.appendChild(item);
+            });
+            $(`#${dropdownId}`).dropdown();
+        }
+
+        // Open Modal
+        userManagerInfo.openModal = async function (
+            action,
+            userID = null,
+            primaryManagerName = null,
+            secondaryManagerName = null,
+            userName = null) {
+
+            const userData = await userManagerInfo.getData();
+
+            $('#modalHeader').text(action === 'assign' ? 'Assign Approver' : 'Edit Approver');
+
+            if (action === 'assign') {
+                $('#userLabel').show();
+                $('#userDisplay').hide();
+                $('#ddlUser').show();
+            } else {
+                $('#userLabel').hide();
+                $('#userDisplay').show();
+                $('#selectedUserName').text(userName);
+                $('#ddlUser').hide();
+            }
+
+            userManagerInfo.populateDropdown('ddlUserMenu', userData);
+            userManagerInfo.populateDropdown('ddlPrimaryApproverMenu', userData);
+            userManagerInfo.populateDropdown('ddlSecondaryApproverMenu', userData);
+
+            setTimeout(() => {
+                if (action === 'edit') {
+                    const primaryApprover = userData.find(user => user.userName === primaryManagerName)?.userID;
+                    const secondaryApprover = userData.find(user => user.userName === secondaryManagerName)?.userID;
+
+                    $('#ddlUser').dropdown('set selected', userID);
+                    $('#ddlPrimaryApprover').dropdown('set selected', primaryApprover);
+                    $('#ddlSecondaryApprover').dropdown('set selected', secondaryApprover);
+                }
+            }, 100);
+
+            // Reinitialize dropdowns
+            userManagerInfo.initializeDropdowns();
+
+            $('#approverModal').modal({
+                centered: true,
+                detachable: false,
+                closable: true,
+                onHidden: function () {
+                    $('#ddlUser').dropdown('clear');
+                    $('#ddlPrimaryApprover').dropdown('clear');
+                    $('#ddlSecondaryApprover').dropdown('clear');
+                    userManagerInfo.checkDropdowns();
+                },
+
+            }).modal('show');
+
+        }
+
+        // Bind the object fields with selected data
+        userManagerInfo.bindform = function () {
+            userManagerInfo.objPost.userId = $('#ddlUser').dropdown('get value');
+            userManagerInfo.objPost.primaryManagerId = $('#ddlPrimaryApprover').dropdown('get value');
+            const smId = $('#ddlSecondaryApprover').dropdown('get value');
+            userManagerInfo.objPost.secondaryManagerId = smId === 'null' || smId === '' ? null : smId;
+
+            console.log(userManagerInfo.objPost);
+        }
+
+        // Initialize dropdowns after populating them
+        userManagerInfo.initializeDropdowns = function () {
+            $('#ddlUser').dropdown({
+                onChange: userManagerInfo.checkDropdowns
+            });
+            $('#ddlPrimaryApprover').dropdown({
+                onChange: userManagerInfo.checkDropdowns
+            });
+            $('#ddlSecondaryApprover').dropdown();
+
+            userManagerInfo.checkDropdowns();
+        }
+
+        // Check Selections to enable/disable 'Save' Btn
+        userManagerInfo.checkDropdowns = function () {
+            const userSelected = $('#ddlUser').dropdown('get value');
+            const primaryApproverSelected = $('#ddlPrimaryApprover').dropdown('get value');
+            const secondaryApproverSelected = $('#ddlSecondaryApprover').dropdown('get value');
+
+            const enableButton = userSelected && primaryApproverSelected;
+
+            $('#savebtn').prop('disabled', !enableButton);
+        }
+
+        // Save function to handle POST
+        userManagerInfo.save = function () {
+            userManagerInfo.bindform();
+
+            $.ajax({
+                url: 'api/HRAdmin/save',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(userManagerInfo.objPost),
+                success: function (response) {
+                    console.log('Approvers Saved Successfully: ', response);
+                    userManagerInfo.getData();
+                    $('#approverModal').modal('hide');
+                    location.reload();
+                },
+            })
+        }
+
+        // Render edit button in GRID
+        userManagerInfo.renderEditBtn = function(params) {
+            return `<button class="ui inverted violet button edit-button" onclick="userManagerInfo.edit('${params.data.userID}', '${params.data.primaryManagerName}', '${params.data.secondaryManagerName}', '${params.data.userName}')">Edit</button>`;
+        }
+
+        // Edit function to open Modal with selected values
+        userManagerInfo.edit = function (userID, primaryManagerName, secondaryManagerName, userName) {
+            userManagerInfo.openModal('edit', userID, primaryManagerName, secondaryManagerName, userName);
+        }
+
+        // Document Ready function
+        $('document').ready(async function () {
+
+            await userManagerInfo.initializeGrid();
+
+            $('#assignBtn').click(function () {
+                userManagerInfo.openModal('assign');
+            });
+
+            $('#closeModal').click(function () {
+                $('#approverModal').modal('hide');
+            });
+
+        });
+    </script>
+</body>
+</html>
